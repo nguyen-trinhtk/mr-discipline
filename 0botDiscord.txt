@@ -1,0 +1,7 @@
+Discord bot
+-----------
+Token:
+MTEyMDE4Njc5NTYyNDI1MTQxMg.GTkL-D.9GJcTbtB_nFXLZhfXTK3HKF0mrwgT68DEtYgEk
+
+Invite link: 
+https://discord.com/api/oauth2/authorize?client_id=1120186795624251412&permissions=29132566036193&scope=bot
