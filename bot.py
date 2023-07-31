@@ -1,45 +1,72 @@
 import discord
+from discord.ext import commands
 import os
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+from datetime import date, datetime
 from dotenv import load_dotenv
-import random
+load_dotenv()
 
-#initializing responses
-greetings = ['Hello there!', 'Hi', "I'm here", "You called me?", "Present!"]
+intents = discord.Intents.all()
+PREFIX = '!'
+bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
-def handle_response(message) -> str:
-    msg = message.lower()
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 
-    if msg == 'hello':
-        return random.choice(greetings)
-    
-    if msg == 'roll':
-        return str(random.randint(1,6))
+client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+spotify = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
-load_dotenv('token.env')
+commandList = ["!hello", "!help", "!play"]
 
-async def send_message(message, user_message, is_private):
-    try: 
-        response = handle_response(user_message)
-        await message.author.send(response) if is_private else await message.channel.send(response)
-    except Exception as e: 
-        print(e)
+@bot.event
+async def on_ready():
+    print(f"We have logged in as {bot.user}")
 
-    
-def run_discord_bot():
-    load_dotenv('token.env')
-    intents = discord.Intents.default()
-    bot = discord.Client(intents=intents)
 
-    @bot.event
-    async def on_ready():
-        guildCnt = 0
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
 
-        for guild in bot.guilds:
-            print(f"- {guild.id} (name: {guild.name})")
-            guildCnt += 1
+    content = message.content.lower()
+    if content.startswith(bot.command_prefix) and content not in commandList:
+        command_names = [command.name for command in bot.commands]
+        recommendations = "\n".join(command_names)
+        await message.channel.send(f"Did you mean one of these commands?\n{recommendations}")
+    await bot.process_commands(message)
 
-        print("Mr.Discipline is in {} guild(s)".format(guildCnt))
+@bot.command()
+async def hello(ctx):
+    msg = "Hey there!"
+    category = ""
+    embed = discord.Embed(title=category, description=msg, color=discord.Color.green())
+    await ctx.send(embed = embed)
+bot.remove_command("help")
 
-    bot.run(os.getenv('TOKEN'))
+@bot.command()
+async def help(ctx):
+    msg = "!hello: Say hello to Mr.Discipline\n!help: List all available commands from Mr.Discipline\n!play `song name`: Play a song from Spotify"
+    category = "Help"
+    embed = discord.Embed(title=category, description=msg, color=discord.Color.green())
+    await ctx.send(embed = embed)
 
-run_discord_bot()
+@bot.command()
+async def play(ctx, song_name):
+    results = spotify.search(q='track:' + song_name, type='track', limit=1)
+    if results['tracks']['items']:
+        track = results['tracks']['items'][0]
+        track_name = track['name']
+        track_artist = track['artists'][0]['name']
+        track_url = track['external_urls']['spotify']
+        track_image = track['album']['images'][0]['url']
+        category = "Now playing: "+ track_name + " by " + track_artist
+        embed = discord.Embed(title=category, description="", color=discord.Color.green())
+        embed.set_thumbnail(url=track_image)
+        embed.add_field(name="Listen on Spotify", value=f"[{track_name}]({track_url})")
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("Song not found.")
+
+bot.run(os.getenv("TOKEN"))
