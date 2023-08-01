@@ -60,13 +60,25 @@ async def play(ctx, song_name):
         track_artist = track['artists'][0]['name']
         track_url = track['external_urls']['spotify']
         track_image = track['album']['images'][0]['url']
+        track_uri = track['uri']
         category = "Now playing: "+ track_name + " by " + track_artist
+
+        if ctx.author.voice is None or ctx.author.voice.channel is None:
+            await ctx.send(embed = discord.Embed(title="", description="You are not in a voice channel.", color=discord.Color.green()))
+            return
+
+        voice_channel = ctx.author.voice.channel
+        voice_client = await voice_channel.connect()
+
         embed = discord.Embed(title=category, description="", color=discord.Color.green())
         embed.set_thumbnail(url=track_image)
         embed.add_field(name="Listen on Spotify", value=f"[{track_name}]({track_url})")
-
         await ctx.send(embed=embed)
-    else:
-        await ctx.send("Song not found.")
 
+        voice_client.play(discord.FFmpegPCMAudio(track_uri))
+
+        
+    else:
+        await ctx.send(embed = discord.Embed(title="", description="Song not found.", color=discord.Color.green()))
+    
 bot.run(os.getenv("TOKEN"))
