@@ -1,0 +1,10 @@
+commands:
+- play (music)
+- help
+- hello
+- quiz
+- note
+- speak note
+- timer
+- alarm
+- 
