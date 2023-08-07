@@ -6,7 +6,10 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import random
 from dotenv import load_dotenv
 import json
-import timer
+import time
+import datetime
+from datetime import datetime
+import asyncio 
 load_dotenv()
 #bot
 intents = discord.Intents.all()
@@ -14,6 +17,8 @@ intents.message_content = True
 intents.voice_states = True
 #prefix
 default_prefix = '!'
+#greetings
+greets = ['Hi', 'Hello', 'Welcome back', 'Greetings', 'Long time no see', 'Aww I miss you sooo mwch']
 #spotify
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
@@ -52,15 +57,6 @@ bot = commands.Bot(command_prefix=get_prefix, intents=intents)
 #events
 @bot.event
 async def on_ready():
-        # global guild_prefixes
-        # for guild in bot.guilds:
-        #     guild_id = guild.id
-        #     if guild_id in guild_prefixes:
-        #         pass
-        #     else:
-        #         guild_prefixes[guild_id] = default_prefix
-        #     print(f"- {guild.id} (name: {guild.name})")
-        # save_guild_setup(guild_prefixes)
         print("Mr.Discipline is in {} guild(s)".format(len(bot.guilds)))
 @bot.event
 async def on_message(message):
@@ -92,11 +88,10 @@ async def getprefix(ctx):
         await ctx.send(embed=embedText('The default prefix for this server is !'))
     
     
-
-
 @bot.command()
 async def hello(ctx):
-    await ctx.send(embed = embedText("Hey there!"))
+    msg = "{}, {}!".format(random.choice(greets), ctx.message.author)
+    await ctx.send(embed = embedText(msg))
 
 bot.remove_command("help")
 
@@ -160,10 +155,11 @@ async def quizset(ctx, *quizname):
             await ctx.send(embed=embedText("Please type in the right format.", quizname.capitalize()))
         else: 
             await ctx.send(embed=embedText('Got it!', quizname.capitalize()))
-            filename = 'quiz-'+ quizname.replace(' ', '_') +".json"
+            filename = 'quiz'+ quizname.replace(' ', '_') +".json"
             with open("mr-discipline/jsons/"+filename, "w") as f:
                 f.write(quizContent)
             break
+    #edit quizset
 
 @bot.command()
 async def quizplay(ctx):
@@ -184,21 +180,69 @@ async def quizappend(ctx):
 
 #timer
 @bot.command()
-async def settimer(ctx, second, min=None, hour=None):
-    pass
+async def timer(ctx, sec: int, min: int, hour: int):
+    sleep_duration = sec + min * 60 + hour * 3600
+    remaining_time = datetime.timedelta(seconds=sleep_duration)
+    message = await ctx.send(f"Timer: {remaining_time} remaining")
+
+    while sleep_duration > 0:
+        await asyncio.sleep(0.63)
+        sleep_duration -= 1
+        remaining_time = datetime.timedelta(seconds=sleep_duration)
+        await message.edit(content=f"Timer: {remaining_time} remaining")
+
+@timer.error
+async def focus_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(embed=embedText("Please provide the duration in seconds, minutes and hour"))
 
 @bot.command()
-async def setalarm(ctx):
-    pass
+async def stopwatch(ctx):
+    hours = 0
+    minutes = 0
+    seconds = 0
+    msg = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    stopwatch_message = await ctx.send(embed=embedText(msg))
+    while True:
+        await asyncio.sleep(0.63)
+        seconds += 1
+        if seconds >= 60:
+            seconds = 0
+            minutes += 1
+        if minutes >= 60:
+            minutes = 0
+            hours += 1
+        msg = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        await stopwatch_message.edit(embed=embedText(msg))
+
+@stopwatch.error
+async def stopwatch_error(ctx, error):
+    await ctx.send("An error occurred while running the stopwatch command.")
+
 
 @bot.command()
-async def focus(ctx, min=None, hour=None):
-    if min and hour: 
-        pass
-    else:
-        pass
-    while focus:
-        pass
+async def alarm(ctx, time: str):
+
+
+@bot.command()
+async def focus(ctx, min: int, hour: int):
+    sleep_duration = min * 60 + hour * 3600
+    remaining_time = datetime.timedelta(seconds=sleep_duration)
+    message = await ctx.send(f"Focus session: {remaining_time} remaining")
+
+    while sleep_duration > 0:
+        await asyncio.sleep(0.63)
+        sleep_duration -= 1
+        remaining_time = datetime.timedelta(seconds=sleep_duration)
+        await message.edit(content=f"Focus session: {remaining_time} remaining")
+
+    await ctx.send("You are in a focus session")
+
+@focus.error
+async def focus_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Please provide the duration in minutes and hour")
+
 @bot.command()
 async def donefocus(ctx):
     global focus 
