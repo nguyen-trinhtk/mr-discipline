@@ -138,32 +138,45 @@ async def play(ctx, *song_name):
 
         else:
             await ctx.send(embed=embedText("Song not found, please try another."))
-    
+
 #quiz
 @bot.command()
 async def quizset(ctx, *quizname):
     guild_id = str(ctx.message.guild.id)
-    quizname = " ".join(quizname)
+    quizname = " ".join(quizname).lower()
     if not quizname:
         quizname = ""
     await ctx.send(embed=embedText("Example: \n`cat: a sharp-eared animal`, `dog: my favorite animal`", "Insert a list of more than one word-colon-meaning's, seperate by commas"))
     while True:
         msg = await bot.wait_for("message", timeout=60)
-        quizContent = '{"' + msg.content + '"}'
-        quizContent = quizContent.replace(' , ', ',').replace(', ', ',').replace(' ,', ',').replace(' : ', ':').replace(': ', ':').replace(' :', ':').replace(':', '":"').replace(',', '","')
+        quiz_content = '{"' + msg.content + '"}'
+        quiz_content = quiz_content.replace(' , ', ',').replace(', ', ',').replace(' ,', ',').replace(' : ', ':').replace(': ', ':').replace(' :', ':').replace(':', '":"').replace(',', '","')
         if not ':' in msg.content or not ',' in msg.content:
             await ctx.send(embed=embedText("Please type in the right format.", quizname.capitalize()))
-        else: 
+        else:
             await ctx.send(embed=embedText('Got it!', quizname.capitalize()))
-            filename = 'quiz'+ quizname.replace(' ', '_') +".json"
-            with open("mr-discipline/jsons/"+filename, "w") as f:
-                f.write(quizContent)
+            quiz_content_dict = json.loads(quiz_content)
+            quiz_dict = load_guild_setup("quizzes.json")[guild_id]
+            quiz_dict.update({quizname:quiz_content_dict})
+            save_guild_setup(quiz_dict, "quizzes.json")
             break
-    #edit quizset
+    #check quizset
 
 @bot.command()
 async def quizplay(ctx):
-    pass
+    guild_id = str(ctx.mesage.guild.id)
+    quiz_dict = load_guild_setup("quizzes.json")[guild_id]
+    quiz_list = list(quiz_dict.keys())
+    quiz_list_str = "\n".join(quiz_list)
+    await ctx.send(embed=embedText(f"From this list\n{quiz_list_str}","Which quiz do you want to play?"))
+    while True:
+        msg = await bot.wait_for("message", timeout = 60)
+        if not msg.lower() in quiz_list:
+            await ctx.send(embed=embedText("Quiz not found, please try again!"))
+        else: 
+            pass
+            break
+    #check quizplay
 
 @bot.command()
 async def quizstop(ctx):
@@ -186,7 +199,7 @@ async def timer(ctx, sec: int, min: int, hour: int):
     message = await ctx.send(f"Timer: {remaining_time} remaining")
 
     while sleep_duration > 0:
-        await asyncio.sleep(0.63)
+        await asyncio.sleep(0.63) #realtime
         sleep_duration -= 1
         remaining_time = datetime.timedelta(seconds=sleep_duration)
         await message.edit(content=f"Timer: {remaining_time} remaining")
@@ -195,7 +208,7 @@ async def timer(ctx, sec: int, min: int, hour: int):
 async def focus_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(embed=embedText("Please provide the duration in seconds, minutes and hour"))
-
+    
 @bot.command()
 async def stopwatch(ctx):
     hours = 0
@@ -222,7 +235,10 @@ async def stopwatch_error(ctx, error):
 
 @bot.command()
 async def alarm(ctx, time: str):
-
+    try:
+        pass
+    except ValueError:
+        await ctx.send(embed=embedText('Please input a valid format, e.g: 11:11'))
 
 @bot.command()
 async def focus(ctx, min: int, hour: int):
