@@ -1,3 +1,8 @@
+#IMPORTANT: UNFIXED POTENTIAL BUGS
+#1: bot.wait_for('message') didnt ignore message from other guilds
+
+
+
 import discord
 from discord.ext import commands
 import os
@@ -134,6 +139,7 @@ async def play(ctx, *song_name):
             embed.add_field(name="Listen on Spotify", value=f"[{track_name}]({track_url})")
             await ctx.send(embed=embed)
 
+            #if the bot is joining voice channel 
             voice_client.play(discord.FFmpegPCMAudio(track_uri), after=await ctx.send(embed=embedText("End of song.")))
 
         else:
@@ -170,22 +176,59 @@ async def quizplay(ctx):
     quiz_list_str = "\n".join(quiz_list)
     await ctx.send(embed=embedText(f"From this list\n{quiz_list_str}","Which quiz do you want to play?"))
     while True:
-        msg = await bot.wait_for("message", timeout = 60)
-        if not msg.lower() in quiz_list:
+        quiz_name = await bot.wait_for("message", timeout = 60)
+        quiz_name = quiz_name.lower()
+        if not quiz_name.lower() in quiz_list:
             await ctx.send(embed=embedText("Quiz not found, please try again!"))
         else: 
-            pass
+            await ctx.send(embed=embedText("Type 'stop' whenever you want to stop.",f"Starting {quiz_name}..."))
             break
+    #quizloop
+    quiz_content = quiz_dict[quiz_name]
+    total_score = len(quiz_content)
+    users_score = 0
+    for key, definition in quiz_content:
+        await ctx.send(embed=embedText('Type in your answer', definition))
+        msg = await bot.wait_for("message", timeout = 60)
+        if TimeoutError:
+            await ctx.send(embed=embedText('You ran out of time, try again'))
+            continue
+        if msg.lower()==key.lower():
+            users_score += 1
+            await ctx.send(embed=embedText('Correct!'))
+        else:
+            await ctx.send(embed=embedText('Sadly, you answered incorrectly :('))
+    await ctx.send(embed=embedText(f'You answered {users_score}/{total_score} correctly!','Congratulations'))
     #check quizplay
 
 @bot.command()
-async def quizstop(ctx):
-    global quizzing
-    quizzing = False
+async def quizremove(ctx, *quizname):
+    guild_id = str(ctx.message.guild.id)
+    quizname = " ".join(quizname).lower()
+    if not quizname:
+        quizname = ""
+    quiz_dict = load_guild_setup("quizzes.json")[guild_id]
+    if not quizname in quiz_dict:
+        await ctx.send(embed=embedText('Quiz not found, please try again'))
+        return
+    await ctx.send("Type 'Yes' to delete, 'No' or ignore to cancel",f"Are you sure you want to delete {quizname}")
+    await bot.wait_for("message", timeout=60)
+    if TimeoutError:
+            await ctx.send(embed=embedText('You ran out of time, try again'))
+    quiz_dict.pop(quizname)
+    save_guild_setup(quiz_dict, "quizzes.json")
+    await ctx.send('Quiz successfully removed!')
 
 @bot.command()
-async def quizremove(ctx):
-    pass
+async def showallquizzes(ctx):
+    guild_id = str(ctx.mesage.guild.id)
+    quiz_dict = load_guild_setup("quizzes.json")[guild_id]
+    quiz_list = list(quiz_dict.keys())
+    cnt = 0
+    for name in quiz_list:
+        msg += str(cnt) + " - " + name + "\n"
+        cnt += 1
+    await ctx.send(embed=embedText(msg, "Here are your notes: "))
 
 @bot.command()
 async def quizappend(ctx):
@@ -251,18 +294,18 @@ async def focus(ctx, min: int, hour: int):
         sleep_duration -= 1
         remaining_time = datetime.timedelta(seconds=sleep_duration)
         await message.edit(content=f"Focus session: {remaining_time} remaining")
-
     await ctx.send("You are in a focus session")
 
 @focus.error
 async def focus_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Please provide the duration in minutes and hour")
+        await ctx.send("Please provide the duration in minutes and hour, e.g. '/focus 11 2 (focus for 2h11m)'")
 
 @bot.command()
 async def donefocus(ctx):
-    global focus 
-    focus = False
+    #raise warning whenever user try to send a message during focus session
+    pass
+
 #note
 @bot.command
 async def newnote(ctx, *notename):
@@ -338,3 +381,5 @@ async def stop(ctx):
     pass
 
 bot.run(os.getenv("TOKEN"), root_logger=True)
+
+
